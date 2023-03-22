@@ -428,6 +428,38 @@ func TestConfigEntryControllers_createsConfigEntry(t *testing.T) {
 				require.Equal(t, "sni", resource.Services[0].SNI)
 			},
 		},
+		{
+			kubeKind:   "ControlPlaneRequestLimit",
+			consulKind: capi.RateLimitIPConfig,
+			configEntryResource: &v1alpha1.ControlPlaneRequestLimit{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: kubeNS,
+				},
+				Spec: v1alpha1.ControlPlaneRequestLimitSpec{
+					Mode:              "permissive",
+					ACL: 				&v1alpha1.ReadWriteRatesConfig{ReadRate: 100.0, WriteRate: 100.0},
+				},
+			},
+			reconciler: func(client client.Client, cfg *consul.Config, watcher consul.ServerConnectionManager, logger logr.Logger) testReconciler {
+				return &ControlPlaneRequestLimitController{
+					Client: client,
+					Log:    logger,
+					ConfigEntryController: &ConfigEntryController{
+						ConsulClientConfig:  cfg,
+						ConsulServerConnMgr: watcher,
+						DatacenterName:      datacenterName,
+					},
+				}
+			},
+			compare: func(t *testing.T, consulEntry capi.ConfigEntry) {
+				rateLimit, ok := consulEntry.(*capi.RateLimitIPConfigEntry)
+				require.True(t, ok, "cast error")
+				require.Equal(t, "permissive", rateLimit.Mode)
+				require.Equal(t, 100.0, rateLimit.ACL.ReadRate)
+				require.Equal(t, 100.0, rateLimit.ACL.WriteRate)
+			},
+		},
 	}
 
 	for _, c := range cases {
