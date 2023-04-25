@@ -473,6 +473,14 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
+	if err := (&controllers.GatewayController{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("Gateway"),
+	}).SetupWithManager(ctx, mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Gateway")
+		return 1
+	}
+
 	configEntryReconciler := &controller.ConfigEntryController{
 		ConsulClientConfig:         c.consul.ConsulClientConfig(),
 		ConsulServerConnMgr:        watcher,
