@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -78,19 +79,24 @@ func (r *GatewayController) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, nil
 	}
 
-	//TODO: serialize gatewayClassConfig onto Gateway.
+	didUpdateForSerialize, err := SerializeGatewayClassConfig(ctx, r.Client, gw, gwc)
+	if err != nil {
+		log.Error(err, "unable to add serialize gateway class config")
+		// we probably should just continue here right and not exit early?
+		// return ctrl.Result{}, err
+	}
 
-	didUpdate, err := EnsureFinalizer(ctx, r.Client, gw, gatewayFinalizer)
+	didUpdateForFinalizer, err := EnsureFinalizer(ctx, r.Client, gw, gatewayFinalizer)
 	if err != nil {
 		log.Error(err, "unable to add finalizer")
 		return ctrl.Result{}, err
 	}
-	if didUpdate {
+	if didUpdateForSerialize || didUpdateForFinalizer {
 		// We updated the Gateway, requeue to avoid another update.
 		return ctrl.Result{}, nil
 	}
 
-	//TODO: Handle reconciliation.
+	// TODO: Handle reconciliation.
 
 	return ctrl.Result{}, nil
 }
